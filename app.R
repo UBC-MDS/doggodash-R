@@ -4,28 +4,32 @@ library(dashHtmlComponents)
 library(dashBootstrapComponents)
 library(ggplot2)
 library(plotly)
-#library(tidyverse)
+#library(tidyverse) # The following 3 libraries are replacing tidyverse.
 library(readr)
 library(tidyr)
 library(dplyr)
 
 app <- Dash$new(external_stylesheets = dbcThemes$BOOTSTRAP)
 
+# Reading datasets
 traits_raw_df <- read_csv("data/breed_traits.csv")
 breed_rank_raw_df <- read_csv("data/breed_rank.csv")
 
 # Some data wrangling in preparation for the ranking trend plot
-
+# Adding "BreedID" is needed so that the dataframes can be joined correctly with
+# "BreedID" as the key.
 traits_raw_df <- tibble::rowid_to_column(traits_raw_df, "BreedID")
 #head(traits_raw_df)
 breed_rank_df <- tibble::rowid_to_column(breed_rank_raw_df, "BreedID")
 #head(breed_rank_df)
 
 # Generate random score in lieu of input from the user.
+# This block should be replaced when it is the code is integrated to Dash
 traits_df <- traits_raw_df %>%
     mutate(score = stats::runif(nrow(traits_raw_df), 1, 100))
 #head(traits_df)
 
+# BEGINNING of more data wrangling.
 top_5_raw_df <- traits_df %>%
     slice_max(n=5, order_by = score)
 
@@ -38,11 +42,13 @@ top_5_raw_df <- rename_with(top_5_raw_df, ~ gsub(" Rank", "", .x, fixed=TRUE))
 
 top_5_rank_df <- top_5_raw_df %>%
     pivot_longer(20:27, names_to = "Rank_year", values_to = "Rank")
+# END of data wrangling
 
 traits_list_full <- top_5_rank_df %>%
     select(-c("Breed" ,"Coat Type", "Coat Length")) %>%
     colnames()
 
+# This block should not be useful when integrating into one single Dash.
 app$layout(
     dbcContainer(
         list(
@@ -60,6 +66,7 @@ app$layout(
     )
 )
 
+# The following is the code for the ranking plot.
 app$callback(
     output('plot-area', 'figure'),
     list(input('col-select', 'value')),
