@@ -183,7 +183,15 @@ top5dogs_plot <- list(
 
 # Row-2
 #Col-1: Table of details on the recommended breeds
-
+details_table <- list(
+  htmlIframe(
+    id = 'table',
+    style = list(
+      height = "600px",
+      width = '800px'
+    )
+  )
+)
 
 # 2. APP LAYOUT
 app$layout(
@@ -219,15 +227,7 @@ app$layout(
       dbcRow(
         #Table container
         dbcCol(
-          list(
-            htmlIframe(
-              id = 'table',
-              style = list(
-                height = "600px",
-                width = '800px'
-              )
-            )
-          )
+          details_table
         ),
         
         
@@ -278,11 +278,17 @@ app$callback(
     
     top_5_plot <- top_5_df %>%
       ggplot(aes(x = score,
-                 y = reorder(Breed.x, score))) +
+                 y = reorder(Breed.x, score))
+      ) +
       labs(x = "Score", y = "Breed")  +
       ggtitle("Your top 5 Dog breeds") +
       geom_bar(stat = "identity")+
-      ggthemes::scale_color_tableau()
+      ggthemes::scale_color_tableau()+
+      theme(
+        plot.title = element_text(size = 10, face = "bold"),
+        axis.text = element_text(size = 07),
+        axis.title = element_text(size = 10)
+      )
     
     ggplotly(top_5_plot) %>% layout()
   }
