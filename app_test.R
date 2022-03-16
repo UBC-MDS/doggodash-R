@@ -151,7 +151,7 @@ weights_slider <- list(
 # Col3 - top5dogs recommender Plot
 top5dogs_plot <- list(
     htmlP(
-      'Top 5 recommended Dog breeds as per chosen traits. Click to view them!',
+      'Top 5 recommended Dog breeds as per chosen traits',
       style = list( 
         color= 'Indigo', 
         fontSize= 18,
@@ -172,7 +172,7 @@ top5dogs_plot <- list(
     ),
     
     htmlP(
-      'Hover over to see 2020 rank and click to see image. To go back, click on browser back button',
+      'Hover over to see more',
       style = list( 
         color= 'Indigo', 
         fontSize= 14,
@@ -182,7 +182,7 @@ top5dogs_plot <- list(
 )
 
 # Row-2
-#Col-1: Table of details on the recommended breeds
+# Col-1: Table of details on the recommended breeds
 details_table <- list(
   htmlP(
     'Details of the recommended dog breeds',
@@ -194,7 +194,78 @@ details_table <- list(
     )
   ),
   htmlIframe(
-    id = 'table'
+    id = 'table',
+    style=list(
+      display= 'block',
+      borderWidth= '0', 
+      width= '100%', 
+      height= '75%',
+      backgroundColor= 'lavender',
+      align= 'center'
+    )
+  )
+)
+
+# Col-2: Ranking plot
+ranking_plot_fun <- function(){
+  # Reading datasets
+  traits_raw_df <- read_csv("data/breed_traits.csv")
+  breed_rank_raw_df <- read_csv("data/breed_rank.csv")
+  
+  # Some data wrangling in preparation for the ranking trend plot
+  # Adding "BreedID" is needed so that the dataframes can be joined correctly with
+  # "BreedID" as the key.
+  traits_raw_df <- tibble::rowid_to_column(traits_raw_df, "BreedID")
+  #head(traits_raw_df)
+  breed_rank_df <- tibble::rowid_to_column(breed_rank_raw_df, "BreedID")
+  #head(breed_rank_df)
+  
+  # Generate random score in lieu of input from the user.
+  # This block should be replaced when it is the code is integrated to Dash
+  traits_df <- traits_raw_df %>%
+    mutate(score = stats::runif(nrow(traits_raw_df), 1, 100))
+  #head(traits_df)
+  
+  # BEGINNING of more data wrangling.
+  top_5_raw_df <- traits_df %>%
+    slice_max(n=5, order_by = score)
+  
+  top_5_raw_df <- top_5_raw_df %>%
+    inner_join(breed_rank_df, by = c("BreedID")) %>%
+    mutate(Breed = Breed.x) %>%
+    select(!Breed.x)
+  
+  top_5_raw_df <- rename_with(top_5_raw_df, ~ gsub(" Rank", "", .x, fixed=TRUE))
+  
+  top_5_rank_df <- top_5_raw_df %>%
+    pivot_longer(20:27, names_to = "Rank_year", values_to = "Rank")
+  # END of data wrangling
+  
+  traits_list_full <- top_5_rank_df %>%
+    select(-c("Breed" ,"Coat Type", "Coat Length")) %>%
+    colnames()
+  
+  return(top_5_rank_df)
+}
+
+ranking_plot <- list(
+  htmlH1('Ranking of breeds'),
+  dccGraph(id='plot-area'),
+  htmlDiv(id='output-area'),
+  htmlBr(),
+  htmlDiv(id='output-area2'),
+  htmlBr(),
+  dccDropdown(
+    id='col-select',
+    options = ranking_plot_fun() %>% colnames %>% purrr::map(function(col) list(label = col, value = col)),
+    value='Rank_year',
+    style=list(
+      display= 'block',
+      borderWidth= '0',
+      width= '100%',
+      height= '250px',
+      backgroundColor= 'lavender'
+    )
   )
 )
 
@@ -241,34 +312,19 @@ app$layout(
         #Table container
         dbcCol(
           details_table,
-          style=list(
-            display= 'block',
-            borderWidth= '0', 
-            width= '100%', 
-            height= '75%',
-            backgroundColor= 'lavender',
-            align= 'center'
-          ),
           md=6,
           align = 'left'
+        ),
+        
+        dbcCol(
+          ranking_plot,
+          md=6,
+          align = 'right'
+        ),
+        
+        style = list(
+          height = '300px'
         )
-        
-        # dbcCol(
-        #   ,
-        #   style=list(
-        #     display= 'block',
-        #     borderWidth= '0', 
-        #     width= '100%', 
-        #     height= '75%',
-        #     backgroundColor= 'lavender',
-        #     align= 'center'
-        #   ),
-        #   md=6,
-        #   align = 'left'
-        # ),
-        
-        
-        
       )
     ),
     style=list(
@@ -278,10 +334,9 @@ app$layout(
   )
 )
 
-
 # 3. CALLBACKS
 
-# Recommended Dogs
+# Recommended Dogs plot
 app$callback(
   output('top5dogs_plot', 'figure'),
   list(
@@ -358,6 +413,37 @@ app$callback(
       slice_head(n = 5)
     
     return(top_5_df %>% htmlTable)
+  }
+)
+
+# Ranking plot
+
+app$callback(
+  output('plot-area', 'figure'),
+  list(input('col-select', 'value')),
+  function(xcol) {
+    top_5_rank_df <- ranking_plot_fun()
+    #top_5_rank_df <- return_list[1]
+    p <- top_5_rank_df %>%
+      ggplot(aes(x=!!sym(xcol),
+                 y=Rank,
+                 color=Breed)) +
+      geom_point() + 
+      scale_y_reverse() +
+      xlab("Rank year") +
+      ggtitle("Popularity ranking of breeds in recent years")
+    ggthemes::scale_color_tableau()
+    ggplotly(p) %>% layout(dragmode = 'select')
+  }
+)
+
+app$callback(
+  list(output('output-area', 'children'),
+       output('output-area2', 'children')),
+  list(input('plot-area', 'selectedData'),
+       input('plot-area', 'hoverData')),
+  function(selected_data, hover_data) {
+    list(toString(selected_data), toString(hover_data))
   }
 )
 
