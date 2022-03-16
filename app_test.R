@@ -184,12 +184,17 @@ top5dogs_plot <- list(
 # Row-2
 #Col-1: Table of details on the recommended breeds
 details_table <- list(
-  htmlIframe(
-    id = 'table',
-    style = list(
-      height = "600px",
-      width = '800px'
+  htmlP(
+    'Details of the recommended dog breeds',
+    style = list( 
+      color= 'Indigo', 
+      fontSize= 18,
+      textAlign= 'center',
+      backgroundColor= 'lavender'
     )
+  ),
+  htmlIframe(
+    id = 'table'
   )
 )
 
@@ -223,12 +228,45 @@ app$layout(
         )
       ),
       
+      htmlHr(
+        style=list(
+          height= '2px',
+          borderWidth= '0',
+          color= 'Indigo'
+        )
+      ),
+      
       # Second row panel
       dbcRow(
         #Table container
         dbcCol(
-          details_table
-        ),
+          details_table,
+          style=list(
+            display= 'block',
+            borderWidth= '0', 
+            width= '100%', 
+            height= '75%',
+            backgroundColor= 'lavender',
+            align= 'center'
+          ),
+          md=6,
+          align = 'left'
+        )
+        
+        # dbcCol(
+        #   ,
+        #   style=list(
+        #     display= 'block',
+        #     borderWidth= '0', 
+        #     width= '100%', 
+        #     height= '75%',
+        #     backgroundColor= 'lavender',
+        #     align= 'center'
+        #   ),
+        #   md=6,
+        #   align = 'left'
+        # ),
+        
         
         
       )
