@@ -79,6 +79,9 @@ app$callback(
         }
 
         merged_df <- merge(traits_df, breed_rank_df, by="BreedID")
+        merged_df <- merged_df %>%
+            rename(Breed = Breed.x) %>%
+            mutate(Breed.y = NULL)
 
         top_5_df <- merged_df[order(-merged_df$'Score', merged_df$"2020 Rank"),] %>%
             slice_head(n = 5)
