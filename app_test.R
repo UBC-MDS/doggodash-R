@@ -218,6 +218,7 @@ ranking_plot <- list(
       backgroundColor= 'lavender'
     )
   ),
+  
   dccGraph(
     id='ranking_plot',
     style=list(
@@ -405,6 +406,7 @@ app$callback(
     traits_df["score"] <- 0
     
     traits_dislikeable <- c("Shedding Level", "Drooling Level")
+    
     traits_list <- unlist(traits_list)
     
     for (i in 1:length(traits_list)) {
@@ -419,14 +421,19 @@ app$callback(
     
     merged_df <- merge(traits_df, breed_rank_df, by = "BreedID")
     
-    top_5_rank_df <- merged_df[order(-merged_df$score, merged_df$"2020 Rank"),] %>%
-      slice_head(n = 5) 
+    top_5_df <- merged_df[order(-merged_df$score, merged_df$"2020 Rank"),] %>%
+      slice_head(n = 5) %>%
+      inner_join(breed_rank_df, by = c("BreedID")) %>%
+      mutate(Breed = Breed.x) %>%
+      select(-c(Breed.x)) %>%
+      rename_with( ~ gsub(" Rank.x", "", .x, fixed=TRUE)) %>%
+      pivot_longer(
+        20:27, 
+        names_to = "Rank_year", 
+        values_to = "Rank"
+      )
     
-    p <- top_5_rank_df %>%
-      
-      rename_with(top_5_rank_df, ~ gsub(" Rank", "", .x, fixed=TRUE)) %>%
-      pivot_longer(20:27, names_to = "Rank_year", values_to = "Rank") %>%
-      
+    top_5_plot <- top_5_df %>%
       ggplot(
         aes(
           x=Rank_year,
@@ -434,14 +441,19 @@ app$callback(
           color=Breed
         )
       ) +
-      geom_line() + 
+      geom_line(group=1)+
       scale_y_reverse() +
       xlab("Rank year") +
-      ggtitle("Popularity ranking of breeds in recent years")+
+      ggtitle("Popularity ranking of breeds in recent years") +
+      theme(
+        plot.title = element_text(size = 10, face = "bold"),
+        axis.text = element_text(size = 07),
+        axis.title = element_text(size = 10)
+      )+
       ggthemes::scale_color_tableau()
-    return(ggplotly(p))
+    
+    ggplotly(top_5_plot) %>% layout(dragmode = 'select')
   }
 )
-
 
 app$run_server(host = "0.0.0.0")
