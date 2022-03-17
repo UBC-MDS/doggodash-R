@@ -477,7 +477,7 @@ app$callback(
     top_5_rank_df <- ranking_plot_fun(top_5_df)
     #top_5_rank_df <- return_list[1]
     p <- top_5_rank_df %>%
-      ggplot(aes(x=!!sym(xcol),
+      ggplot(aes(x=Rank_year,
                  y=Rank,
                  color=Breed)) +
       geom_point() + 
