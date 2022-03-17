@@ -207,58 +207,19 @@ details_table <- list(
 )
 
 # Col-2: Ranking plot
-ranking_plot_fun <- function(){
-  # Reading datasets
-  traits_raw_df <- read_csv("data/breed_traits.csv")
-  breed_rank_raw_df <- read_csv("data/breed_rank.csv")
-  
-  # Some data wrangling in preparation for the ranking trend plot
-  # Adding "BreedID" is needed so that the dataframes can be joined correctly with
-  # "BreedID" as the key.
-  traits_raw_df <- tibble::rowid_to_column(traits_raw_df, "BreedID")
-  #head(traits_raw_df)
-  breed_rank_df <- tibble::rowid_to_column(breed_rank_raw_df, "BreedID")
-  #head(breed_rank_df)
-  
-  # Generate random score in lieu of input from the user.
-  # This block should be replaced when it is the code is integrated to Dash
-  traits_df <- traits_raw_df %>%
-    mutate(score = stats::runif(nrow(traits_raw_df), 1, 100))
-  #head(traits_df)
-  
-  # BEGINNING of more data wrangling.
-  top_5_raw_df <- traits_df %>%
-    slice_max(n=5, order_by = score)
-  
-  top_5_raw_df <- top_5_raw_df %>%
-    inner_join(breed_rank_df, by = c("BreedID")) %>%
-    mutate(Breed = Breed.x) %>%
-    select(!Breed.x)
-  
-  top_5_raw_df <- rename_with(top_5_raw_df, ~ gsub(" Rank", "", .x, fixed=TRUE))
-  
-  top_5_rank_df <- top_5_raw_df %>%
-    pivot_longer(20:27, names_to = "Rank_year", values_to = "Rank")
-  # END of data wrangling
-  
-  traits_list_full <- top_5_rank_df %>%
-    select(-c("Breed" ,"Coat Type", "Coat Length")) %>%
-    colnames()
-  
-  return(top_5_rank_df)
-}
 
 ranking_plot <- list(
-  htmlH1('Ranking of breeds'),
-  dccGraph(id='plot-area'),
-  htmlDiv(id='output-area'),
-  htmlBr(),
-  htmlDiv(id='output-area2'),
-  htmlBr(),
-  dccDropdown(
-    id='col-select',
-    options = ranking_plot_fun() %>% colnames %>% purrr::map(function(col) list(label = col, value = col)),
-    value='Rank_year',
+  htmlP(
+    'Ranking trend of breeds',
+    style = list( 
+      color= 'Indigo', 
+      fontSize= 18,
+      textAlign= 'center',
+      backgroundColor= 'lavender'
+    )
+  ),
+  dccGraph(
+    id='ranking_plot',
     style=list(
       display= 'block',
       borderWidth= '0',
@@ -268,6 +229,7 @@ ranking_plot <- list(
     )
   )
 )
+
 
 # 2. APP LAYOUT
 app$layout(
@@ -309,17 +271,19 @@ app$layout(
       
       # Second row panel
       dbcRow(
-        #Table container
-        dbcCol(
-          details_table,
-          md=6,
-          align = 'left'
-        ),
-        
-        dbcCol(
-          ranking_plot,
-          md=6,
-          align = 'right'
+        list(
+          #Table container
+          dbcCol(
+            details_table,
+            md=6,
+            align = 'left'
+          ),
+          
+          dbcCol(
+            ranking_plot,
+            md=6,
+            align = 'right'
+          )
         ),
         
         style = list(
@@ -369,18 +333,23 @@ app$callback(
     top_5_df <- merged_df[order(-merged_df$score, merged_df$"2020 Rank"),] %>%
       slice_head(n = 5)
     
+    top_5_df <- top_5_df %>%
+      mutate(Breed = Breed.x)
+    
     top_5_plot <- top_5_df %>%
       ggplot(aes(x = score,
-                 y = reorder(Breed.x, score))
+                 y = reorder(Breed, score),
+                 fill = Breed)
       ) +
       labs(x = "Score", y = "Breed")  +
       ggtitle("Your top 5 Dog breeds") +
-      geom_bar(stat = "identity")+
+      geom_bar(stat = "identity") +
       ggthemes::scale_color_tableau()+
       theme(
         plot.title = element_text(size = 10, face = "bold"),
         axis.text = element_text(size = 07),
-        axis.title = element_text(size = 10)
+        axis.title = element_text(size = 10),
+        legend.position = "none"
       )
     
     ggplotly(top_5_plot) %>% layout()
@@ -409,6 +378,10 @@ app$callback(
     
     merged_df <- merge(traits_df, breed_rank_df, by="BreedID")
     
+    merged_df <- merged_df %>%
+      rename(Breed = Breed.x) %>%
+      mutate(Breed.y = NULL)
+    
     top_5_df <- merged_df[order(-merged_df$'Score', merged_df$"2020 Rank"),] %>%
       slice_head(n = 5)
     
@@ -419,32 +392,56 @@ app$callback(
 # Ranking plot
 
 app$callback(
-  output('plot-area', 'figure'),
-  list(input('col-select', 'value')),
-  function(xcol) {
-    top_5_rank_df <- ranking_plot_fun()
-    #top_5_rank_df <- return_list[1]
+  output('ranking_plot', 'figure'),
+  list(
+    input('traits-widget', 'value'),
+    input('xslider_like', 'value'),
+    input('xslider_dislike', 'value')
+  ),
+  function(traits_list, positive_weight, negative_weight) {
+    traits_df <- tibble::rowid_to_column(traits_raw_df, "BreedID")
+    breed_rank_df <- tibble::rowid_to_column(breed_rank_raw_df, "BreedID")
+    
+    traits_df["score"] <- 0
+    
+    traits_dislikeable <- c("Shedding Level", "Drooling Level")
+    traits_list <- unlist(traits_list)
+    
+    for (i in 1:length(traits_list)) {
+      if (length(traits_list) == 0) {
+        next
+      } else if (traits_list[i] %in% traits_dislikeable) {
+        traits_df["score"] <- traits_df["score"] + traits_df[traits_list[i]] * negative_weight
+      } else {
+        traits_df["score"] <- traits_df["score"] + traits_df[traits_list[i]] * positive_weight
+      }
+    }
+    
+    merged_df <- merge(traits_df, breed_rank_df, by = "BreedID")
+    
+    top_5_rank_df <- merged_df[order(-merged_df$score, merged_df$"2020 Rank"),] %>%
+      slice_head(n = 5) 
+    
     p <- top_5_rank_df %>%
-      ggplot(aes(x=!!sym(xcol),
-                 y=Rank,
-                 color=Breed)) +
-      geom_point() + 
+      
+      rename_with(top_5_rank_df, ~ gsub(" Rank", "", .x, fixed=TRUE)) %>%
+      pivot_longer(20:27, names_to = "Rank_year", values_to = "Rank") %>%
+      
+      ggplot(
+        aes(
+          x=Rank_year,
+          y=Rank,
+          color=Breed
+        )
+      ) +
+      geom_line() + 
       scale_y_reverse() +
       xlab("Rank year") +
-      ggtitle("Popularity ranking of breeds in recent years")
-    ggthemes::scale_color_tableau()
-    ggplotly(p) %>% layout(dragmode = 'select')
+      ggtitle("Popularity ranking of breeds in recent years")+
+      ggthemes::scale_color_tableau()
+    return(ggplotly(p))
   }
 )
 
-app$callback(
-  list(output('output-area', 'children'),
-       output('output-area2', 'children')),
-  list(input('plot-area', 'selectedData'),
-       input('plot-area', 'hoverData')),
-  function(selected_data, hover_data) {
-    list(toString(selected_data), toString(hover_data))
-  }
-)
 
 app$run_server(host = "0.0.0.0")
