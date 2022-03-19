@@ -9,7 +9,7 @@ Here is a preview of DoggoDash:
 
 ## Installation
 
-DoggoDash is hosted online by Heroku and can be accessed [here](http://dsci532-2022-group18-py.herokuapp.com/). There is no local installation required.
+DoggoDash is hosted online by Heroku and can be accessed [here](https://dsci532-group18-r.herokuapp.com/). There is no local installation required.
 
 ## Usage
 
