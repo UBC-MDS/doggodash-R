@@ -21,11 +21,11 @@ Interested in contributing? Check out the [contributing guidelines](https://gith
 
 DoggoDash is built using [Dash](https://dash.plotly.com/), and thus Dash is required for contributing to the project. Dash can be installed by running:
 ```
-pip install dash
+install.packages("dash")
 ```
 Once Dash is installed and the repository is cloned (following the instructions in the contributing guidelines), a local version of the app for testing can be built by running:
 ```
-python src/app.py
+Rscript app.R
 ```
 Simply copy and paste the web address created into your browser of choice to begin seeing your changes come to life!
 
