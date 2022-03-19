@@ -4,8 +4,7 @@ Welcome to DoggoDash! DoggoDash is an interactive web app created using Dash and
 
 Here is a preview of DoggoDash:
 
-![DoggoDash Preview](doc/images/sketch.png)
-![DoggoDash Preview](doc/images/sketch2.png)
+![DoggoDash Preview](doc/images/dashr.png)
 
 ## Installation
 
